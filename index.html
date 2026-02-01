@@ -3,110 +3,107 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LAST Empire | Emoji Edition</title>
+    <title>LAST Empire | الملحمة</title>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { margin: 0; background: #050505; overflow: hidden; }
+        body { margin: 0; background: #000; overflow: hidden; font-family: 'Arial', sans-serif; }
+        /* تصميم القائمة السفلية - الهيكل اللي بتقول عليه */
+        .bottom-menu {
+            position: fixed; bottom: 0; width: 100%; height: 70px;
+            background: rgba(20, 20, 20, 0.9); display: flex;
+            justify-content: space-around; align-items: center;
+            border-top: 2px solid #ffd700; z-index: 10;
+        }
+        .menu-item { color: #fff; text-align: center; font-size: 12px; filter: grayscale(1); }
+        .menu-item.active { filter: grayscale(0); color: #ffd700; }
     </style>
 </head>
 <body>
+
     <div id="game-container"></div>
+
+    <div class="bottom-menu">
+        <div class="menu-item active">🦁<br>العرين</div>
+        <div class="menu-item">⚒️<br>تطوير</div>
+        <div class="menu-item">📜<br>مهام</div>
+        <div class="menu-item">👥<br>القبيلة</div>
+    </div>
+
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
 
+        // نظام الحفظ (Local Storage) عشان مجهودك ميروحش
+        let balance = parseInt(localStorage.getItem('last_balance')) || 0;
+
         const config = {
             type: Phaser.AUTO,
             width: window.innerWidth,
-            height: window.innerHeight,
-            backgroundColor: '#050505',
+            height: window.innerHeight - 70, // نسيب مكان للقائمة
+            backgroundColor: '#0a0a0a',
             parent: 'game-container',
             physics: { default: 'arcade' },
             scene: { create: create, update: update }
         };
 
         const game = new Phaser.Game(config);
-        let lion, scoreText, balance = 0, distance = 0;
-        let lastPos = { x: 0, y: 0 };
+        let lion, scoreText, distance = 0, lastPos = {x:0, y:0};
 
         function create() {
-            // رسم الأسد كرمز (Emoji)
-            lion = this.add.text(window.innerWidth/2, window.innerHeight/2, '🦁', { fontSize: '60px' });
+            // إضافة الأسد
+            lion = this.add.text(window.innerWidth/2, window.innerHeight/2, '🦁', { fontSize: '80px' });
             this.physics.add.existing(lion);
             lion.body.setCollideWorldBounds(true);
 
-            // واجهة الرصيد
-            scoreText = this.add.text(20, 40, `💰 $LAST: 0`, {
-                fontSize: '32px', fill: '#ffd700', fontWeight: 'bold'
+            // عداد العملات بشكل أشيك
+            scoreText = this.add.text(20, 30, `💰 $LAST: ${balance}`, {
+                fontSize: '35px', fill: '#ffd700', fontWeight: 'bold'
             });
 
             lastPos = { x: lion.x, y: lion.y };
 
-            // التحكم باللمس
+            // حل مشكلة الوقوف: الحركة مستمرة مع اللمس
             this.input.on('pointermove', (pointer) => {
-                this.physics.moveToObject(lion, pointer, 250);
+                this.physics.moveToObject(lion, pointer, 300);
             });
         }
 
         function update() {
             let d = Phaser.Math.Distance.Between(lion.x, lion.y, lastPos.x, lastPos.y);
-            if (d > 2) {
+            if (d > 1) {
                 distance += d;
                 lastPos = { x: lion.x, y: lion.y };
 
-                if (distance >= 800) { // سرعنا التجميع شوية
-                    balance += 1;playSound('coin');
+                if (distance >= 700) {
+                    balance += 1;
                     distance = 0;
                     scoreText.setText(`💰 $LAST: ${balance}`);
                     
-                    // تأثير بصري عند تجميع العملة (افتكاسة)
-                    showGainEffect(this, lion.x, lion.y);
+                    // حفظ تلقائي
+                    localStorage.setItem('last_balance', balance);
                     
+                    // تشغيل الصوت والاهتزاز
+                    playCoinSound();
                     tg.HapticFeedback.impactOccurred('medium');
                 }
             }
         }
 
-        function showGainEffect(scene, x, y) {
-            let flyCoin = scene.add.text(x, y, '+1 💰', { fontSize: '20px', fill: '#ffd700' });
-            scene.tweens.add({
-                targets: flyCoin,
-                y: y - 100,
-                alpha: 0,
-                duration: 800,
-                onComplete: () => flyCoin.destroy()
-            });
-      
-function playSound(type) {
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const oscillator = audioCtx.createOscillator();
-    const gainNode = audioCtx.createGain();
-
-    oscillator.connect(gainNode);
-    gainNode.connect(audioCtx.destination);
-
-    if (type === 'coin') {
-        // صوت "رنة" العملة
-        oscillator.type = 'sine';
-        oscillator.frequency.setValueAtTime(800, audioCtx.currentTime);
-        oscillator.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.1);
-        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
-    } else if (type === 'roar') {
-        // محاكاة زئير (صوت خشن شوية)
-        oscillator.type = 'sawtooth';
-        oscillator.frequency.setValueAtTime(100, audioCtx.currentTime);
-        oscillator.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.5);
-        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
-    }
-
-    oscillator.start();
-    oscillator.stop(audioCtx.currentTime + (type === 'coin' ? 0.1 : 0.5));
-}
-
-      
+        // دالة الصوت المحسنة (تعمل مع أول لمسة)
+        function playCoinSound() {
+            try {
+                const context = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = context.createOscillator();
+                const g = context.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(900, context.currentTime);
+                g.gain.setValueAtTime(0.1, context.currentTime);
+                osc.connect(g);
+                g.connect(context.destination);
+                osc.start();
+                osc.stop(context.currentTime + 0.1);
+            } catch(e) { console.log("الصوت محتاج دوسة شاشة"); }
         }
     </script>
 </body>
