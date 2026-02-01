@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>LAST Empire | إمبراطورية الأسود</title>
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body { margin: 0; background: #000; overflow: hidden; font-family: sans-serif; }
+        canvas { display: block; margin: 0 auto; }
+        #loading { color: #ffd700; text-align: center; margin-top: 50%; font-weight: bold; font-size: 20px; }
+    </style>
+</head>
+<body>
+    <div id="loading">جاري فتح العرين... 🦁</div>
+    <div id="game-container"></div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+        tg.ready();
+
+        const config = {
+            type: Phaser.AUTO,
+            width: window.innerWidth,
+            height: window.innerHeight,
+            backgroundColor: '#0a0a0a',
+            parent: 'game-container',
+            physics: { default: 'arcade', arcade: { gravity: { y: 0 } } },
+            scene: { preload: preload, create: create, update: update }
+        };
+
+        const game = new Phaser.Game(config);
+        let lion, scoreText, balance = 0, distance = 0;
+        let lastPos = { x: 0, y: 0 };
+
+        function preload() {
+            // صور أونلاين سريعة عشان الداتا
+            this.load.image('lion', 'https://cdn-icons-png.flaticon.com/512/616/616412.png'); 
+            this.load.image('bg', 'https://img.freepik.com/free-vector/dark-night-forest-landscape-with-coniferous-trees_107791-1869.jpg');
+        }
+
+        function create() {
+            document.getElementById('loading').style.display = 'none';
+            
+            // إضافة الخلفية وتظبيط حجمها على الشاشة
+            let bg = this.add.image(window.innerWidth/2, window.innerHeight/2, 'bg');
+            bg.setDisplaySize(window.innerWidth, window.innerHeight);
+            
+            // إضافة الأسد (البطل)
+            lion = this.physics.add.sprite(window.innerWidth/2, window.innerHeight/2, 'lion').setScale(0.15);
+            lion.setCollideWorldBounds(true);
+            
+            lastPos.x = lion.x;
+            lastPos.y = lion.y;
+
+            // نص الرصيد
+            scoreText = this.add.text(20, 40, `💰 $LAST: 0`, {
+                fontSize: '28px', fill: '#ffd700', fontWeight: 'bold', stroke: '#000', strokeThickness: 5
+            });
+
+            // التحكم باللمس (اتحرك في أي مكان والأسد هيجري وراك)
+            this.input.on('pointermove', (pointer) => {
+                this.physics.moveToObject(lion, pointer, 250);
+            });
+        }
+
+        function update() {
+            // حساب المسافة المقطوعة للتعدين
+            let d = Phaser.Math.Distance.Between(lion.x, lion.y, lastPos.x, lastPos.y);
+            
+            if (d > 2) { // لو الأسد بيتحرك فعلاً
+                distance += d;
+                lastPos.x = lion.x;
+                lastPos.y = lion.y;
+
+                // كل ما يمشي 1000 بكسل ياخد عملة
+                if (distance >= 1000) { 
+                    balance += 1;
+                    distance = 0;
+                    scoreText.setText(`💰 $LAST: ${balance}`);
+                    // اهتزاز الموبايل مع كل عملة (Haptic Feedback)
+                    tg.HapticFeedback.impactOccurred('light');
+                }
+            } else {
+                lion.body.setVelocity(0); // وقف الأسد لو مفيش لمس
+            }
+        }
+    </script>
+</body>
+</html>
