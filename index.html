@@ -1,109 +1,117 @@
 <!DOCTYPE html>
-<html lang="ar">
+<html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LAST Empire | الملحمة</title>
-    <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <title>أسد المليون الأخير - النسخة التجريبية</title>
     <style>
-        body { margin: 0; background: #000; overflow: hidden; font-family: 'Arial', sans-serif; }
-        /* تصميم القائمة السفلية - الهيكل اللي بتقول عليه */
-        .bottom-menu {
-            position: fixed; bottom: 0; width: 100%; height: 70px;
-            background: rgba(20, 20, 20, 0.9); display: flex;
-            justify-content: space-around; align-items: center;
-            border-top: 2px solid #ffd700; z-index: 10;
-        }
-        .menu-item { color: #fff; text-align: center; font-size: 12px; filter: grayscale(1); }
-        .menu-item.active { filter: grayscale(0); color: #ffd700; }
+        body { background: #1a1a1a; color: gold; font-family: 'Arial', sans-serif; text-align: center; margin: 0; }
+        #game-container { max-width: 500px; margin: 20px auto; border: 2px solid gold; padding: 20px; border-radius: 15px; }
+        .stat-box { display: flex; justify-content: space-around; background: #333; padding: 10px; border-radius: 10px; margin-bottom: 20px; }
+        .action-btn { background: gold; color: black; border: none; padding: 15px 30px; font-weight: bold; border-radius: 5px; cursor: pointer; margin: 10px; transition: 0.3s; }
+        .action-btn:disabled { background: gray; }
+        #academy-box { background: #222; border: 1px dashed white; padding: 15px; margin-top: 20px; }
+        #status-msg { color: #00ff00; height: 20px; margin: 10px 0; }
+        .hidden { display: none; }
     </style>
 </head>
 <body>
 
-    <div id="game-container"></div>
+    <h1>🦁 أسد المليون الأخير</h1>
+    
+    <div id="game-container">
+        <div class="stat-box">
+            <div>الذهب: <span id="balance">0</span> $LAST</div>
+            <div>المستوى: <span id="level-name">شبل</span></div>
+        </div>
 
-    <div class="bottom-menu">
-        <div class="menu-item active">🦁<br>العرين</div>
-        <div class="menu-item">⚒️<br>تطوير</div>
-        <div class="menu-item">📜<br>مهام</div>
-        <div class="menu-item">👥<br>القبيلة</div>
+        <div id="status-msg">أهلاً بك في العرين..</div>
+
+        <div id="controls">
+            <button id="dig-btn" class="action-btn" onclick="startDigging()">اضغط للحفر (15 ثانية)</button>
+            <button id="hunt-btn" class="action-btn hidden" onclick="bossFight()">مواجهة الزعيم 🐗</button>
+        </div>
+
+        <div id="academy-box">
+            <h3>🦉 أكاديمية البومة</h3>
+            <p id="lesson">الدرس: ما هو الـ Web3؟</p>
+            <input type="text" id="secret-code" placeholder="أدخل كود الفيديو هنا...">
+            <button onclick="checkAcademyCode()" style="padding: 5px;">تفعيل المكافأة</button>
+        </div>
+
+        <div id="shop">
+            <h3>🛒 متجر الغابة</h3>
+            <button onclick="buyItem('shield', 500)" class="action-btn" style="font-size: 12px;">شراء درع (500 $LAST)</button>
+        </div>
     </div>
 
     <script>
-        const tg = window.Telegram.WebApp;
-        tg.expand();
-
-        // نظام الحفظ (Local Storage) عشان مجهودك ميروحش
-        let balance = parseInt(localStorage.getItem('last_balance')) || 0;
-
-        const config = {
-            type: Phaser.AUTO,
-            width: window.innerWidth,
-            height: window.innerHeight - 70, // نسيب مكان للقائمة
-            backgroundColor: '#0a0a0a',
-            parent: 'game-container',
-            physics: { default: 'arcade' },
-            scene: { create: create, update: update }
+        // حالة اللعبة (State)
+        let gameState = {
+            balance: 0,
+            level: 1, // 1: شبل, 2: شاب, 3: ملك
+            hasShield: false,
+            canDig: true
         };
 
-        const game = new Phaser.Game(config);
-        let lion, scoreText, distance = 0, lastPos = {x:0, y:0};
+        // نظام الحفر (Tab/Wait)
+        function startDigging() {
+            if (!gameState.canDig) return;
+            gameState.canDig = false;
+            document.getElementById('dig-btn').disabled = true;
+            document.getElementById('status-msg').innerText = "الأسد يحفر الآن... انتظر 15 ثانية";
 
-        function create() {
-            // إضافة الأسد
-            lion = this.add.text(window.innerWidth/2, window.innerHeight/2, '🦁', { fontSize: '80px' });
-            this.physics.add.existing(lion);
-            lion.body.setCollideWorldBounds(true);
-
-            // عداد العملات بشكل أشيك
-            scoreText = this.add.text(20, 30, `💰 $LAST: ${balance}`, {
-                fontSize: '35px', fill: '#ffd700', fontWeight: 'bold'
-            });
-
-            lastPos = { x: lion.x, y: lion.y };
-
-            // حل مشكلة الوقوف: الحركة مستمرة مع اللمس
-            this.input.on('pointermove', (pointer) => {
-                this.physics.moveToObject(lion, pointer, 300);
-            });
+            setTimeout(() => {
+                let reward = Math.floor(Math.random() * 50) + 20;
+                gameState.balance += reward;
+                gameState.canDig = true;
+                document.getElementById('dig-btn').disabled = false;
+                document.getElementById('status-msg').innerText = `تم العثور على ${reward} عملة!`;
+                updateUI();
+            }, 15000);
         }
 
-        function update() {
-            let d = Phaser.Math.Distance.Between(lion.x, lion.y, lastPos.x, lastPos.y);
-            if (d > 1) {
-                distance += d;
-                lastPos = { x: lion.x, y: lion.y };
-
-                if (distance >= 700) {
-                    balance += 1;
-                    distance = 0;
-                    scoreText.setText(`💰 $LAST: ${balance}`);
-                    
-                    // حفظ تلقائي
-                    localStorage.setItem('last_balance', balance);
-                    
-                    // تشغيل الصوت والاهتزاز
-                    playCoinSound();
-                    tg.HapticFeedback.impactOccurred('medium');
-                }
+        // نظام الأكاديمية (Learn)
+        function checkAcademyCode() {
+            let code = document.getElementById('secret-code').value;
+            if (code === "LAST2026") {
+                gameState.balance += 200;
+                gameState.level = 2;
+                document.getElementById('status-msg').innerText = "🦉 أحسنت! ارتقيت لمستوى أسد شاب!";
+                document.getElementById('hunt-btn').classList.remove('hidden');
+                updateUI();
+            } else {
+                alert("الكود خطأ! شاهده في فيديو اليوتيوب.");
             }
         }
 
-        // دالة الصوت المحسنة (تعمل مع أول لمسة)
-        function playCoinSound() {
-            try {
-                const context = new (window.AudioContext || window.webkitAudioContext)();
-                const osc = context.createOscillator();
-                const g = context.createGain();
-                osc.type = 'triangle';
-                osc.frequency.setValueAtTime(900, context.currentTime);
-                g.gain.setValueAtTime(0.1, context.currentTime);
-                osc.connect(g);
-                g.connect(context.destination);
-                osc.start();
-                osc.stop(context.currentTime + 0.1);
-            } catch(e) { console.log("الصوت محتاج دوسة شاشة"); }
+        // نظام المتجر (Shop)
+        function buyItem(item, price) {
+            if (gameState.balance >= price) {
+                gameState.balance -= price;
+                if (item === 'shield') gameState.hasShield = true;
+                document.getElementById('status-msg').innerText = "تم شراء الدرع! أنت الآن أقوى.";
+                updateUI();
+            } else {
+                alert("الذهب لا يكفي!");
+            }
+        }
+
+        // مواجهة الزعيم (Boss)
+        function bossFight() {
+            if (gameState.hasShield) {
+                alert("🦁 بفضل الدرع، هزمت الخنزير الزعيم وحصلت على تاج الملوك!");
+                gameState.level = 3;
+                updateUI();
+            } else {
+                alert("🐗 الخنزير قذف بك بعيداً! تحتاج لدرع من المتجر أولاً.");
+            }
+        }
+
+        // تحديث الشاشة
+        function updateUI() {
+            document.getElementById('balance').innerText = gameState.balance;
+            let levels = ["", "شبل", "أسد شاب", "الأسد الملك 👑"];
+            document.getElementById('level-name').innerText = levels[gameState.level];
         }
     </script>
 </body>
